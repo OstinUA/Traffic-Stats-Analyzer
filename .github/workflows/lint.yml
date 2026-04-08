@@ -1,0 +1,39 @@
+name: Lint
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    env:
+      # Set this to your project runtime if your repository standard differs.
+      NODE_VERSION: "22"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Lint JavaScript with ESLint
+        run: |
+          npx --yes eslint@9 \
+            --no-config-lookup \
+            --ext .js \
+            --global chrome \
+            --global browser \
+            --global window \
+            --global document \
+            --global console \
+            --rule 'no-debugger:error' \
+            --rule 'no-duplicate-imports:error' \
+            --rule 'no-unused-vars:warn' \
+            background options popup shared
