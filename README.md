@@ -1,127 +1,127 @@
-# Traffic-Stats-Analyzer
+## 1. Title and Description
 
-A Chrome Manifest V3 traffic intelligence library-style extension that analyzes domain visit volume and country distribution via a provider-driven API abstraction.
+# Traffic Stats Analyzer Logging Library
 
+A provider-agnostic JavaScript logging and traffic-observability library for Chrome extensions that normalizes domain telemetry, enriches API responses, and guarantees resilient fallback behavior.
+
+[![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen?style=for-the-badge)](#6-testing)
 [![Version](https://img.shields.io/badge/version-2.1.0-blue?style=for-the-badge)](manifest.json)
-[![Manifest](https://img.shields.io/badge/Chrome-Manifest%20V3-green?style=for-the-badge&logo=googlechrome)](manifest.json)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue?style=for-the-badge)](LICENSE)
-[![API Reference](https://img.shields.io/badge/docs-API%20Reference-orange?style=for-the-badge)](API_REFERENCE.md)
+[![Coverage](https://img.shields.io/badge/Coverage-Manual%20Validation-yellow?style=for-the-badge)](#6-testing)
 
 > [!NOTE]
-> This project is implemented as a browser extension with reusable JavaScript modules that behave like a lightweight logging/analytics integration layer for external traffic providers.
+> This library is currently shipped as a Chrome Manifest V3 extension package and can be consumed as a modular logging/analytics runtime in extension-based architectures.
 
-## Table of Contents
+## 2. Table of Contents
 
-- [Features](#features)
-- [Tech Stack & Architecture](#tech-stack--architecture)
-- [Getting Started](#getting-started)
-- [Testing](#testing)
-- [Deployment](#deployment)
-- [Usage](#usage)
-- [Configuration](#configuration)
-- [License](#license)
+- [1. Title and Description](#1-title-and-description)
+- [2. Table of Contents](#2-table-of-contents)
+- [3. Features](#3-features)
+- [4. Tech Stack & Architecture](#4-tech-stack--architecture)
+- [5. Getting Started](#5-getting-started)
+- [6. Testing](#6-testing)
+- [7. Deployment](#7-deployment)
+- [8. Usage](#8-usage)
+- [9. Configuration](#9-configuration)
+- [10. License](#10-license)
 - [Support the Project](#support-the-project)
 
-## Features
+## 3. Features
 
-- Provider-based request pipeline with configurable `baseUrl`, endpoint mapping, and header templates.
-- RapidAPI-oriented authentication model with runtime key injection (`__REPLACE__` token replacement).
-- Domain normalization utilities for robust URL-to-domain extraction from active browser tabs.
-- Parallel data retrieval for:
-  - estimated visit volume
-  - top traffic countries and share breakdown
-- Graceful fallback behavior:
-  - explicit demo mode (`useMock`)
-  - automatic mock fallback on missing API key
-  - automatic mock fallback on HTTP/network/runtime failures
-- UI-level configuration editing directly from popup and options page.
-- Chrome sync storage persistence for provider settings and feature flags.
-- Manifest V3 service worker architecture with asynchronous message-based orchestration.
-- API compatibility handling for heterogeneous response schemas (`visits`, `totalVisits`, `value`, `topCountries`, etc.).
+- Structured, provider-driven logging pipeline with configurable `baseUrl`, endpoints, and auth headers.
+- Domain canonicalization primitives (`normalizeDomain`, `getHostFromUrl`) to prevent malformed telemetry dimensions.
+- Asynchronous dual-stream retrieval model for visits and geography channels.
+- Resilient failover semantics:
+  - explicit mock mode (`useMock`)
+  - automatic mock failover when API key is absent
+  - automatic fallback envelope on transport and API errors
+- Runtime response harmonization for multi-provider schemas (`visits | totalVisits | value`, `topCountries | countries`).
+- Message-based worker orchestration (`ANALYZE_DOMAIN`) that decouples UI rendering from network execution.
+- Persistent configuration surface backed by `chrome.storage.sync`.
+- Extension-native UX integration through popup and options interfaces.
+- Deterministic demo capability for onboarding, QA smoke tests, and API quota outage scenarios.
 
 > [!IMPORTANT]
-> The extension intentionally fails open to mock data when upstream API access is unavailable, ensuring consistent UX during onboarding and quota exhaustion scenarios.
+> The fallback-first design ensures logs and traffic insights remain available even during provider outages or misconfiguration.
 
-## Tech Stack & Architecture
+## 4. Tech Stack & Architecture
 
-- **Language:** Vanilla JavaScript (ES Modules)
-- **Runtime:** Chrome Extension (Manifest V3)
-- **Persistence:** `chrome.storage.sync`
-- **Background Execution:** Service Worker (`background/service-worker.js`)
-- **UI Surfaces:** Popup + Options page (HTML/CSS/JS)
-- **External Integration:** Similarweb-compatible RapidAPI endpoints
+### Core Stack
+
+- JavaScript (ES Modules)
+- Chrome Extension APIs (Manifest V3)
+- Service Worker background runtime
+- HTML/CSS popup and options interfaces
+- RapidAPI-compatible external provider integration
+
+### Dependencies and Runtime Interfaces
+
+- `chrome.runtime` for message dispatch and request orchestration
+- `chrome.storage.sync` for persisted runtime configuration
+- `chrome.tabs` for active-tab domain extraction
+- `fetch` for provider API transport
 
 ### Project Structure
-
-<details>
-<summary>Expand file tree</summary>
 
 ```text
 Traffic-Stats-Analyzer/
 ├─ background/
 │  └─ service-worker.js
-├─ icons/
-│  └─ icon128.png
-├─ options/
-│  ├─ options.css
-│  ├─ options.html
-│  └─ options.js
 ├─ popup/
-│  ├─ popup.css
 │  ├─ popup.html
+│  ├─ popup.css
 │  └─ popup.js
+├─ options/
+│  ├─ options.html
+│  ├─ options.css
+│  └─ options.js
 ├─ shared/
 │  ├─ constants.js
 │  ├─ domain.js
 │  └─ mock-data.js
 ├─ styles/
 │  └─ base.css
+├─ manifest.json
 ├─ API_REFERENCE.md
 ├─ CONTRIBUTING.md
-├─ LICENSE
-└─ manifest.json
+└─ LICENSE
 ```
-
-</details>
 
 ### Key Design Decisions
 
-- **Provider abstraction over hardcoded endpoint logic** to enable swapping data providers with minimal UI changes.
-- **Resilience-first data path** where API failures degrade into deterministic local mock payloads.
-- **Single normalization boundary** (`normalizeDomain`) to keep provider requests and UI behavior consistent.
-- **Message-driven architecture** (`ANALYZE_DOMAIN`) to isolate network logic from rendering logic.
-
-<details>
-<summary>Architecture and data flow (Mermaid)</summary>
+- **Provider schema abstraction:** Provider metadata is externalized to configuration and not hardcoded into UI logic.
+- **Canonicalization boundary:** Domain normalization happens before outbound requests to preserve metric consistency.
+- **Fault-tolerant envelopes:** Every call resolves with a predictable response shape, even on error paths.
+- **Parallel fetch strategy:** Visits and geography are collected concurrently to reduce end-to-end latency.
+- **UI/worker separation:** UI modules focus on interaction and rendering, while networking stays in the service worker.
 
 ```mermaid
 flowchart LR
-  A[Popup UI] -->|ANALYZE_DOMAIN| B[Service Worker]
-  C[Options UI] -->|Save provider config| D[chrome.storage.sync]
-  D --> B
-  B --> E[normalizeDomain]
-  B --> F[buildHeaders]
-  F --> G[Provider API: visits]
-  F --> H[Provider API: top-countries]
-  G --> I[Response Envelope]
-  H --> I
-  I -->|success| J[Render Visits + Countries]
-  I -->|error| K[Fallback to MOCK payload]
-  K --> J
+  A[Popup or Options UI] --> B[chrome.runtime.sendMessage]
+  B --> C[Service Worker analyzeDomain]
+  C --> D[normalizeDomain]
+  C --> E[buildHeaders]
+  E --> F[Visits Endpoint]
+  E --> G[Top Countries Endpoint]
+  F --> H[Envelope Normalization]
+  G --> H
+  H --> I[Success: api source]
+  H --> J[Failure: fallback-mock source]
+  I --> K[UI Rendering and Logging]
+  J --> K
 ```
 
-</details>
-
 > [!TIP]
-> If you plan to support multiple providers, keep the endpoint contract stable at the rendering layer and evolve adapter logic in `service-worker.js`.
+> When adding additional providers, preserve envelope contracts first and adapt provider fields second.
 
-## Getting Started
+## 5. Getting Started
 
 ### Prerequisites
 
-- Google Chrome (current stable recommended)
-- A RapidAPI subscription key for a Similarweb-compatible provider (optional when using mock mode)
+- Google Chrome (latest stable)
 - Git
+- Optional: valid RapidAPI key for a Similarweb-compatible provider
+- Optional local tooling for QA: `node` and `npm` (for lint/packaging checks)
 
 ### Installation
 
@@ -130,198 +130,161 @@ git clone https://github.com/<your-org>/Traffic-Stats-Analyzer.git
 cd Traffic-Stats-Analyzer
 ```
 
-1. Open `chrome://extensions`.
-2. Enable **Developer mode**.
-3. Click **Load unpacked**.
-4. Select the repository root directory.
-5. Open the extension popup and configure provider settings if needed.
-
-<details>
-<summary>Troubleshooting and alternative setup</summary>
-
-### Troubleshooting
-
-- If the popup shows fallback data only, verify your `X-RapidAPI-Key` in options.
-- If the detected domain is empty, ensure the active tab has a valid `http`/`https` URL.
-- If requests fail with host errors, check `baseUrl`, endpoint paths, and `X-RapidAPI-Host` alignment.
-- If settings do not persist, verify Chrome sync storage availability for your profile.
-
-### Build-from-source notes
-
-This project is source-native and does not require a compile step. Packaging for distribution can be done by zipping the repository contents (excluding `.git`) and uploading to the Chrome Web Store developer dashboard.
-
-</details>
-
-> [!WARNING]
-> Do not commit real production API keys to source control. Configure keys through extension options or environment-specific secret workflows.
-
-## Testing
-
-> [!NOTE]
-> The repository currently does not include an automated unit/integration test harness.
-
-Recommended checks:
-
 ```bash
-# Validate manifest and extension package semantics via web-ext
-npx --yes web-ext lint --source-dir .
-
-# Run static formatting/linting only if you add project tooling
-# Example placeholders:
-# npm run lint
-# npm run test
+# Open Chrome extension manager
+# chrome://extensions
 ```
 
-Manual verification checklist:
+1. Enable Developer Mode.
+2. Click **Load unpacked**.
+3. Select the repository root.
+4. Open popup and configure provider credentials.
+5. Analyze the active tab domain or enter a custom domain.
 
-1. Open popup on a real domain tab.
-2. Confirm domain auto-detection.
-3. Trigger analysis with mock mode enabled.
-4. Disable mock mode, provide API key, and re-run.
-5. Validate fallback behavior by intentionally breaking endpoint URL.
+> [!WARNING]
+> Never hardcode production API keys in source files. Use runtime options storage only.
 
-## Deployment
+## 6. Testing
 
-### Production Deployment Guidelines
+This repository currently has no committed automated unit/integration test suite, so validation is done via linting and deterministic manual checks.
 
-- Validate extension behavior in a clean Chrome profile.
-- Ensure `manifest.json` version bump for each release.
-- Package extension source into a release artifact (`.zip`) for store upload.
-- Maintain provider endpoint compatibility and update API docs (`API_REFERENCE.md`) with contract changes.
+### Lint and Package Validation
 
-### Suggested CI/CD Flow
+```bash
+npx --yes web-ext lint --source-dir .
+```
 
-1. Run lint/static checks.
-2. Verify manifest integrity and permissions review.
-3. Generate release archive.
-4. Publish tagged release and upload package to Chrome Web Store.
+### Suggested Local Test Commands (if you add test tooling)
 
-<details>
-<summary>Example GitHub Actions outline</summary>
+```bash
+npm run lint
+npm run test
+npm run test:integration
+```
+
+### Manual Validation Matrix
+
+1. Verify domain auto-detection on an active browser tab.
+2. Enable `useMock` and confirm stable demo payload rendering.
+3. Disable `useMock`, set API key, and verify live provider output.
+4. Intentionally break endpoint URL and confirm `fallback-mock` handling.
+5. Save custom provider values and reopen popup to validate persistence.
+
+> [!CAUTION]
+> A green manual run does not guarantee provider contract compatibility across all third-party API versions.
+
+## 7. Deployment
+
+### Production Readiness Checklist
+
+- Bump `manifest.json` version for release.
+- Validate permission scope and host patterns.
+- Confirm provider endpoints and headers in options defaults.
+- Run extension linting and full manual validation matrix.
+- Create release archive excluding VCS metadata.
+
+### Packaging
+
+```bash
+zip -r traffic-stats-analyzer.zip . -x '.git/*'
+```
+
+### CI/CD Integration Guidance
+
+- Trigger release workflow on tags (`v*`).
+- Run `web-ext lint` in CI before packaging.
+- Publish zip artifact for release review and store upload.
 
 ```yaml
 name: release-extension
 on:
   push:
-    tags:
-      - 'v*'
+    tags: ["v*"]
 jobs:
   package:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Lint extension
-        run: npx --yes web-ext lint --source-dir .
-      - name: Create package
-        run: zip -r traffic-stats-analyzer.zip . -x '.git/*'
+      - run: npx --yes web-ext lint --source-dir .
+      - run: zip -r traffic-stats-analyzer.zip . -x '.git/*'
 ```
 
-</details>
+## 8. Usage
 
-## Usage
-
-### Basic Usage
+### Initialize and Trigger Analysis
 
 ```javascript
-// popup/popup.js (conceptual usage flow)
+// Send a domain analysis request to the background logging pipeline.
 const response = await chrome.runtime.sendMessage({
   type: 'ANALYZE_DOMAIN',
-  domain: 'example.com' // normalized in background worker
+  domain: 'example.com' // Input can be raw URL or domain-like value.
 });
 
-// visits payload compatibility: visits | totalVisits | value
+// Normalize visits from multi-provider response contracts.
 const visits = response.visits?.data?.visits
   ?? response.visits?.data?.totalVisits
   ?? response.visits?.data?.value
   ?? 0;
 
-console.log('Estimated visits:', visits);
+console.log('Domain:', response.domain);
+console.log('Visits:', visits);
 console.log('Top countries:', response.geography?.data?.topCountries || []);
 ```
 
+### Domain Utility Usage
+
 ```javascript
-// shared/domain.js usage
 import { normalizeDomain, getHostFromUrl } from './shared/domain.js';
 
-normalizeDomain('https://www.example.com/path?q=1'); // example.com
-getHostFromUrl('https://news.example.com/article'); // news.example.com
+const d1 = normalizeDomain('https://www.example.com/blog/post'); // example.com
+const d2 = getHostFromUrl('https://news.example.com/path'); // news.example.com
+
+console.log(d1, d2);
 ```
 
-<details>
-<summary>Advanced usage: provider overrides and custom endpoint contracts</summary>
+## 9. Configuration
 
-- Override provider settings in options to target a different compatible backend.
-- Keep endpoint semantics equivalent:
-  - `visits` endpoint must return at least one numeric key among `visits`, `totalVisits`, or `value`.
-  - `geography` endpoint should return `topCountries` with `{ country, share }` entries (or equivalent field aliases).
-- Use mock mode for deterministic demo sessions and integration smoke checks.
+### Storage-Backed Configuration Model
 
-</details>
+- `provider.name`: Logical provider label.
+- `provider.baseUrl`: Provider API base URL.
+- `provider.endpoints.visits`: Visits endpoint prefix.
+- `provider.endpoints.geography`: Geography endpoint prefix.
+- `provider.headers.X-RapidAPI-Key`: Placeholder token expanded with `provider.apiKey`.
+- `provider.headers.X-RapidAPI-Host`: Provider host header.
+- `provider.apiKey`: Runtime API key entered by user.
+- `useMock`: Boolean switch for demo/fallback behavior.
 
-<details>
-<summary>Edge cases and defensive behavior</summary>
-
-- Invalid active tab URL results in empty domain detection.
-- Empty API key automatically enables mock mode.
-- HTTP non-2xx responses are converted to fallback envelopes.
-- Unknown geography payload shapes are rendered conservatively from best-effort list resolution.
-
-</details>
-
-## Configuration
-
-### Runtime Configuration Sources
-
-- **Chrome sync storage keys**
-  - `provider`
-  - `useMock`
-- **Provider schema fields**
-  - `name`
-  - `baseUrl`
-  - `endpoints.visits`
-  - `endpoints.geography`
-  - `headers.X-RapidAPI-Key` (tokenized)
-  - `headers.X-RapidAPI-Host`
-  - `apiKey`
-
-### Environment Variables
-
-This extension does not use `.env` files by default. Configuration is managed via UI and persisted using Chrome storage APIs.
-
-<details>
-<summary>Default provider schema and effective behavior matrix</summary>
+### Default Configuration Schema
 
 ```json
 {
-  "name": "RapidAPI Similarweb",
-  "baseUrl": "https://similarweb12.p.rapidapi.com",
-  "endpoints": {
-    "visits": "/v1/website/visits?domain=",
-    "geography": "/v1/website/top-countries?domain="
+  "provider": {
+    "name": "RapidAPI Similarweb",
+    "baseUrl": "https://similarweb12.p.rapidapi.com",
+    "endpoints": {
+      "visits": "/v1/website/visits?domain=",
+      "geography": "/v1/website/top-countries?domain="
+    },
+    "headers": {
+      "X-RapidAPI-Key": "__REPLACE__",
+      "X-RapidAPI-Host": "similarweb12.p.rapidapi.com"
+    },
+    "apiKey": ""
   },
-  "headers": {
-    "X-RapidAPI-Key": "__REPLACE__",
-    "X-RapidAPI-Host": "similarweb12.p.rapidapi.com"
-  },
-  "apiKey": ""
+  "useMock": true
 }
 ```
 
-| Condition | Data source | `source` value | Notes |
-| --- | --- | --- | --- |
-| `useMock = true` | Local mock | `mock` | Explicit demo mode |
-| `useMock = false` + missing API key | Local mock | `mock` | Forced safety fallback |
-| API request succeeds | Provider API | `api` | Normal production path |
-| API request fails | Local mock | `fallback-mock` | Includes error message |
+### Environment Variables and Startup Flags
 
-</details>
+This project does not currently ship with `.env` ingestion or CLI startup flags. Configuration is runtime-driven through Chrome storage and the options UI.
 
-> [!CAUTION]
-> Expanding host permissions (`https://*/*`) increases review surface and security implications. Restrict as tightly as practical before public release.
+If desired, CI environments can inject provider defaults by generating a patched `shared/constants.js` during build-time release workflows.
 
-## License
+## 10. License
 
-This project is licensed under the Apache License 2.0. See [LICENSE](LICENSE) for full terms.
+Licensed under the Apache License 2.0. See [LICENSE](LICENSE) for full legal terms.
 
 ## Support the Project
 
